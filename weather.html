@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pro Weather App</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: linear-gradient(to right, #8e9eab, #eef2f3);
+      transition: background 0.5s;
+    }
+
+    .dark-mode {
+      background: linear-gradient(to right, #232526, #414345);
+      color: white;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 2rem;
+      border-radius: 20px;
+      background-color: #ffffffcc;
+      box-shadow: 0 0 30px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+    }
+
+    input {
+      padding: 10px;
+      width: 60%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .forecast, .current {
+      margin-top: 20px;
+    }
+
+    .card {
+      background-color: #ffffffbb;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 12px;
+      display: inline-block;
+      width: 100px;
+    }
+
+    .toggle-dark {
+      float: right;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: -30px;
+      margin-right: -20px;
+      color: #333;
+    }
+
+    @media (max-width: 600px) {
+      input {
+        width: 90%;
+      }
+
+      .card {
+        width: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="container">
+    <span class="toggle-dark" onclick="toggleDarkMode()">🌓</span>
+    <h1>Professional Weather App</h1>
+    <input type="text" id="cityInput" placeholder="Enter City Name..." />
+    <div>
+      <button onclick="getWeather()">Search</button>
+      <button onclick="getLocationWeather()">📍 My Location</button>
+      <button onclick="voiceSearch()">🎤 Voice</button>
+      <button onclick="clearAll()">❌ Clear</button>
+    </div>
+<p>Made By Anshuman Singh ( Web Developer )</p>
+    <div class="current" id="weatherResult"></div>
+    <div class="forecast" id="forecastResult"></div>
+  </div>
+
+  <script>
+    const apiKey = "fa71c145476011944c088443dc830946";
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    function clearAll() {
+      document.getElementById("cityInput").value = "";
+      document.getElementById("weatherResult").innerHTML = "";
+      document.getElementById("forecastResult").innerHTML = "";
+    }
+
+    async function getWeather(cityName = null) {
+      const input = document.getElementById("cityInput");
+      const city = cityName || input.value.trim();
+      if (!city) {
+        alert("Please enter a city name!");
+        return;
+      }
+
+      const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+      try {
+        const [currentRes, forecastRes] = await Promise.all([
+          fetch(currentUrl),
+          fetch(forecastUrl),
+        ]);
+
+        if (!currentRes.ok || !forecastRes.ok) throw new Error("City not found");
+
+        const currentData = await currentRes.json();
+        const forecastData = await forecastRes.json();
+
+        showCurrentWeather(currentData);
+        showForecast(forecastData.list);
+        changeBackground(currentData.weather[0].main);
+      } catch (err) {
+        document.getElementById("weatherResult").innerHTML = `<p>❌ ${err.message}</p>`;
+      }
+    }
+
+    function showCurrentWeather(data) {
+      const html = `
+        <h2>${data.name}, ${data.sys.country}</h2>
+        <p><strong>${data.weather[0].main}</strong></p>
+        <p>🌡 ${data.main.temp}°C | 💧 ${data.main.humidity}%</p>
+        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png"/>
+      `;
+      document.getElementById("weatherResult").innerHTML = html;
+    }
+
+    function showForecast(forecastList) {
+      const forecastContainer = document.getElementById("forecastResult");
+      forecastContainer.innerHTML = "<h3>🗓 5-Day Forecast</h3>";
+
+      const filtered = forecastList.filter(item => item.dt_txt.includes("12:00:00"));
+
+      filtered.slice(0, 5).forEach(item => {
+        const date = new Date(item.dt_txt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+        const html = `
+          <div class="card">
+            <p>${date}</p>
+            <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png"/>
+            <p>${item.main.temp}°C</p>
+          </div>
+        `;
+        forecastContainer.innerHTML += html;
+      });
+    }
+
+    function changeBackground(weather) {
+      const bg = {
+        Clear: '#fefcea',
+        Rain: '#a1c4fd',
+        Snow: '#e0eafc',
+        Clouds: '#d3cce3',
+        Thunderstorm: '#667db6',
+        Drizzle: '#89f7fe',
+        Mist: '#cfd9df'
+      };
+
+      document.body.style.background = `linear-gradient(to right, ${bg[weather] || '#8e9eab'}, #eef2f3)`;
+    }
+
+    function voiceSearch() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("❌ Voice search not supported");
+        return;
+      }
+
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const city = event.results[0][0].transcript;
+        document.getElementById("cityInput").value = city;
+        getWeather(city);
+      };
+
+      recognition.onerror = () => {
+        alert("Voice error");
+      };
+    }
+
+    function getLocationWeather() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+
+          const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+          const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+
+          try {
+            const [currentRes, forecastRes] = await Promise.all([
+              fetch(currentUrl),
+              fetch(forecastUrl),
+            ]);
+
+            const currentData = await currentRes.json();
+            const forecastData = await forecastRes.json();
+
+            showCurrentWeather(currentData);
+            showForecast(forecastData.list);
+            changeBackground(currentData.weather[0].main);
+          } catch {
+            alert("Failed to get weather by location.");
+          }
+        }, () => {
+          alert("Location access denied!");
+        });
+      } else {
+        alert("Geolocation not supported.");
+      }
+    }
+  </script>
+</body>
+</html>
